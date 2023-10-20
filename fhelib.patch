@@ -1,0 +1,289 @@
+diff --git a/params.cmake b/params.cmake
+index e9deb44..31e3fca 100644
+--- a/params.cmake
++++ b/params.cmake
+@@ -31,10 +31,30 @@ if (NOT TIIFHE_P)
+ 	288230376168947713")
+ endif()
+ 
++if (NOT TIIFHE_E)
++	set(TIIFHE_E "\\
++	1152921504606584833, \\
++	1152921504598720513, \\
++	1152921504597016577, \\
++	1152921504595968001, \\
++	1152921504595640321, \\
++	1152921504593412097, \\
++	1152921504592822273, \\
++	1152921504592429057, \\
++	1152921504589938689, \\
++	1152921504586530817, \\
++	1152921504585547777, \\
++	1152921504583647233")
++endif()
++
+ if (NOT TIIFHE_OMEGA)
+ 	set(TIIFHE_OMEGA 3)
+ endif()
+ 
++if (NOT TIIFHE_OMEGA2)
++	set(TIIFHE_OMEGA2 8)
++endif()
++
+ # set other variables
+ function(add result x y)
+ 	math(EXPR value "${x} + ${y}")
+@@ -54,9 +74,16 @@ endfunction()
+ 
+ len(TIIFHE_QLEN ${TIIFHE_Q})
+ len(TIIFHE_PLEN ${TIIFHE_P})
++len(TIIFHE_ELEN ${TIIFHE_E})
+ add(TIIFHE_QPLEN ${TIIFHE_QLEN} ${TIIFHE_PLEN})
++add(TIIFHE_QPELEN ${TIIFHE_QPLEN} ${TIIFHE_ELEN})
+ 
+ ceil(TIIFHE_KMAX ${TIIFHE_QLEN} ${TIIFHE_OMEGA})
+ if (TIIFHE_PLEN GREATER TIIFHE_KMAX)
+ 	set(TIIFHE_KMAX ${TIIFHE_PLEN})
+ endif()
++
++ceil(TIIFHE_KMAX2 ${TIIFHE_QPLEN} ${TIIFHE_OMEGA2})
++if (TIIFHE_BLEN GREATER TIIFHE_KMAX2)
++	set(TIIFHE_KMAX2 ${TIIFHE_ELEN})
++endif()
+diff --git a/src/bgv.c b/src/bgv.c
+index 7e689ee..c1e8fe0 100644
+--- a/src/bgv.c
++++ b/src/bgv.c
+@@ -2,6 +2,8 @@
+ 
+ size_t tiifhe_decomp_idx[TIIFHE_OMEGA][TIIFHE_KMAX];
+ size_t tiifhe_decomp_len[TIIFHE_OMEGA];
++size_t tiifhe_decomp2_idx[TIIFHE_OMEGA2][TIIFHE_KMAX2];
++size_t tiifhe_decomp2_len[TIIFHE_OMEGA2];
+ 
+ #define MAX(a, b) ((a) > (b) ? (a) : (b))
+ 
+@@ -185,23 +187,33 @@ tiifhe_bgv_init(void)
+ 
+ 	tiifhe_msgmod_init();
+ 
+-	for (i = 0; i < TIIFHE_QPLEN; ++i)
++	for (i = 0; i < TIIFHE_QPELEN; ++i)
+ 		tiifhe_mod_init(i, tiifhe_t.value);
+ 
+ 	/* initialize chunks */
+ 	div = TIIFHE_QLEN / TIIFHE_OMEGA;
+ 	rest = TIIFHE_QLEN % TIIFHE_OMEGA;
+-
+ 	for (k = 0; k < TIIFHE_OMEGA; ++k) {
+ 		len = div;
+ 		if (rest > 0)
+ 			++len, --rest;
+ 		tiifhe_decomp_len[k] = len;
+ 	}
+-
+ 	for (i = 0; i < TIIFHE_QLEN; ++i)
+ 		tiifhe_decomp_idx[i % TIIFHE_OMEGA][i / TIIFHE_OMEGA] = i;
+ 
++	/* initialize chunks2 */
++	div = TIIFHE_QPLEN / TIIFHE_OMEGA2;
++	rest = TIIFHE_QPLEN % TIIFHE_OMEGA2;
++	for (k = 0; k < TIIFHE_OMEGA2; ++k) {
++		len = div;
++		if (rest > 0)
++			++len, --rest;
++		tiifhe_decomp2_len[k] = len;
++	}
++	for (i = 0; i < TIIFHE_QPLEN; ++i)
++		tiifhe_decomp2_idx[i % TIIFHE_OMEGA2][i / TIIFHE_OMEGA2] = i;
++
+ 	mpz_clear(tmp);
+ }
+ 
+diff --git a/src/bgv.h b/src/bgv.h
+index efd7500..97ee22d 100644
+--- a/src/bgv.h
++++ b/src/bgv.h
+@@ -55,6 +55,8 @@ struct tiifhe_key_switch {
+ extern size_t tiifhe_decomp_idx[TIIFHE_OMEGA][TIIFHE_KMAX];
+ extern size_t tiifhe_decomp_len[TIIFHE_OMEGA];
+ 
++extern size_t tiifhe_decomp2_idx[TIIFHE_OMEGA2][TIIFHE_KMAX2];
++extern size_t tiifhe_decomp2_len[TIIFHE_OMEGA2];
+ 
+ /**********************
+  *   HIGH-LEVEL API   *
+@@ -68,6 +70,7 @@ extern size_t tiifhe_decomp_len[TIIFHE_OMEGA];
+  * should be a reasonable assumption for a ring layer. Memory allocation uses
+  * calloc with error checking, thus, allocated memory will be valid and zero.
+  */
++/* high-level API */
+ tiifhe_Ciphertext *tiifhe_bgv_alloc_ct(void);
+ tiifhe_KeyPublic  *tiifhe_bgv_alloc_pk(void);
+ tiifhe_KeySecret  *tiifhe_bgv_alloc_sk(void);
+diff --git a/src/config.h.in b/src/config.h.in
+index fc7b84a..4554474 100644
+--- a/src/config.h.in
++++ b/src/config.h.in
+@@ -5,14 +5,19 @@
+ #define TIIFHE_T         @TIIFHE_T@
+ #define TIIFHE_QLEN      @TIIFHE_QLEN@
+ #define TIIFHE_PLEN      @TIIFHE_PLEN@
++#define TIIFHE_ELEN      @TIIFHE_ELEN@
+ #define TIIFHE_QPLEN     @TIIFHE_QPLEN@
++#define TIIFHE_QPELEN    @TIIFHE_QPELEN@
+ #define TIIFHE_OMEGA     @TIIFHE_OMEGA@
++#define TIIFHE_OMEGA2    @TIIFHE_OMEGA2@
+ #define TIIFHE_KMAX      @TIIFHE_KMAX@
++#define TIIFHE_KMAX2     @TIIFHE_KMAX2@
+ #cmakedefine01 TIIFHE_FIX_SEED 
+ #cmakedefine01 TIIFHE_LOG_ERROR
+ 
+ #define TIIFHE_Q @TIIFHE_Q@
+ #define TIIFHE_P @TIIFHE_P@
++#define TIIFHE_E @TIIFHE_E@
+ 
+ #include "util.h"
+ #include "random.h"
+diff --git a/src/msg_mpz.c b/src/msg_mpz.c
+index 4b733a0..c96c8fe 100644
+--- a/src/msg_mpz.c
++++ b/src/msg_mpz.c
+@@ -327,7 +327,7 @@ tiifhe_msg_unpack(tiifhe_Message *rop, const tiifhe_Message *m)
+ 
+ 		mpz_init(tmp);
+ 		for (j = 0; j < TIIFHE_N; ++j) {
+-			mpz_tdiv_q(tmp, tmp, tiifhe_t.value);
++			mpz_cdiv_q(tmp, m->value[j], tiifhe_t.value);
+ 			gmp_fprintf(f, j < TIIFHE_N - 1 ? "%Zd, " : "%Zd\n", tmp);
+ 		}
+ 		mpz_clear(tmp);
+diff --git a/src/ring_hexl.cpp b/src/ring_hexl.cpp
+index 3a7c76c..1b917c5 100644
+--- a/src/ring_hexl.cpp
++++ b/src/ring_hexl.cpp
+@@ -5,10 +5,13 @@ extern "C" {
+ 
+ #include "hexl/hexl.hpp"
+ 
+-tiifhe_Mod tiifhe_q[TIIFHE_QPLEN];
+-const tiifhe_Digit tiifhe_rns[TIIFHE_QPLEN] = {
++#define ROUND(a) ((uint64_t)(a + 0.5))
++
++tiifhe_Mod tiifhe_q[TIIFHE_QPELEN];
++const tiifhe_Digit tiifhe_rns[TIIFHE_QPELEN] = {
+ 	TIIFHE_Q,
+-	TIIFHE_P
++	TIIFHE_P,
++	TIIFHE_E
+ };
+ 
+ tiifhe_Digit
+@@ -43,7 +46,7 @@ tiifhe_mod_init_mpz(size_t idx, mpz_t t)
+ void
+ tiifhe_mod_init_u64(size_t idx, uint64_t t)
+ {
+-	int64_t mod, P;
++	int64_t mod, P, E;
+ 	size_t i;
+ 
+ 	mod = tiifhe_rns[idx];
+@@ -55,6 +58,14 @@ tiifhe_mod_init_u64(size_t idx, uint64_t t)
+ 		P = intel::hexl::MultiplyMod(P, tiifhe_rns[i], mod);
+ 	tiifhe_q[idx].P = P;
+ 
++	E = 1;
++	for (; i < TIIFHE_QPELEN; ++i)
++		E = intel::hexl::MultiplyMod(E, tiifhe_rns[i], mod);
++	tiifhe_q[idx].E = E;
++
++	if (idx == TIIFHE_QPELEN)
++		return;
++
+ 	tiifhe_q[idx].ntt = (void *)(new intel::hexl::NTT(TIIFHE_N, mod));
+ 	tiifhe_q[idx].idx = idx;
+ }
+@@ -97,6 +108,33 @@ tiifhe_poly_addmul(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *op1, const t
+ 	intel::hexl::EltwiseMultMod(rop->value, rop->value, tmp.value, TIIFHE_N, tiifhe_rns[idx], 1);
+ }
+ 
++void
++tiifhe_poly_approx(size_t idx, tiifhe_PolyApprox *rop, const tiifhe_Poly *p)
++{
++	size_t j;
++
++	for (j = 0; j < TIIFHE_N; ++j)
++		rop->value[j] = p->value[j] / (double)tiifhe_q[idx].value;
++}
++
++void
++tiifhe_poly_approx_add(size_t idx, tiifhe_PolyApprox *rop, const tiifhe_Poly *op1, const tiifhe_PolyApprox *op2)
++{
++	size_t j;
++
++	for (j = 0; j < TIIFHE_N; ++j)
++		rop->value[j] = op1->value[j] / (double)tiifhe_q[idx].value + op2->value[j];
++}
++
++void
++tiifhe_poly_approx_mulc(size_t idx, tiifhe_Poly *rop, const tiifhe_PolyApprox *op1, const tiifhe_Digit op2)
++{
++	size_t j;
++
++	for (j = 0; j < TIIFHE_N; ++j)
++		rop->value[j] = intel::hexl::MultiplyMod(ROUND(op1->value[j]), op2, tiifhe_rns[idx]);
++}
++
+ void
+ tiifhe_poly_cmod(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *p)
+ {
+diff --git a/src/ring_hexl.h b/src/ring_hexl.h
+index 0478c46..aca70c7 100644
+--- a/src/ring_hexl.h
++++ b/src/ring_hexl.h
+@@ -9,14 +9,17 @@
+ 
+ #include "config.h"
+ 
+-typedef uint64_t           tiifhe_Digit;
+-typedef struct tiifhe_mod  tiifhe_Mod;
+-typedef struct tiifhe_poly tiifhe_Poly;
++typedef uint64_t                  tiifhe_Digit;
++typedef struct tiifhe_mod         tiifhe_Mod;
++typedef struct tiifhe_poly        tiifhe_Poly;
++typedef struct tiifhe_poly_approx tiifhe_PolyApprox;
+ 
+ struct tiifhe_mod {
+ 	uint64_t value;
+ 	uint64_t t;
+ 	uint64_t P;
++	uint64_t E;
++	uint64_t M;
+ 	void *ntt;
+ 	size_t idx;
+ };
+@@ -25,8 +28,12 @@ struct tiifhe_poly {
+ 	uint64_t value[TIIFHE_N];
+ };
+ 
+-extern tiifhe_Mod tiifhe_q[TIIFHE_QPLEN];
+-extern const tiifhe_Digit tiifhe_rns[TIIFHE_QPLEN];
++struct tiifhe_poly_approx {
++	double value[TIIFHE_N];
++};
++
++extern tiifhe_Mod tiifhe_q[TIIFHE_QPELEN];
++extern const tiifhe_Digit tiifhe_rns[TIIFHE_QPELEN];
+ 
+ tiifhe_Digit tiifhe_mod_const(size_t idx, const tiifhe_Digit op);
+ void         tiifhe_mod_deinit(size_t idx);
+@@ -38,6 +45,9 @@ tiifhe_Digit tiifhe_mod_neg(size_t idx, const tiifhe_Digit op);
+ 
+ void tiifhe_poly_add(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *op1, const tiifhe_Poly *op2);
+ void tiifhe_poly_addmul(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *op1, const tiifhe_Poly *op2, const tiifhe_Poly *op3, const tiifhe_Poly *op4);
++void tiifhe_poly_approx(size_t idx, tiifhe_PolyApprox *rop, const tiifhe_Poly *p);
++void tiifhe_poly_approx_add(size_t idx, tiifhe_PolyApprox *rop, const tiifhe_Poly *op1, const tiifhe_PolyApprox *op2);
++void tiifhe_poly_approx_mulc(size_t idx, tiifhe_Poly *rop, const tiifhe_PolyApprox *op1, const tiifhe_Digit op2);
+ void tiifhe_poly_cmod(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *p);
+ void tiifhe_poly_deinit(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly *p);
+ void tiifhe_poly_ext(size_t idx, tiifhe_Poly *rop, const tiifhe_Poly **p, const size_t *base, const size_t *drops, size_t len);

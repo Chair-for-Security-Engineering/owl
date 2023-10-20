@@ -1,0 +1,3 @@
+[submodule "fhelib"]
+	path = fhelib
+	url = https://github.com/Crypto-TII/fhelib
