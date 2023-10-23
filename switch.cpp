@@ -37,6 +37,8 @@ ct_rand(tiifhe_Ciphertext *ct, tiifhe_KeyPublic *pk, int domain)
 		tiifhe_poly_intt(i, &ct[i].poly[1]);
 		ct[i].ntt = 0;
 	}
+
+	tiifhe_msg_dealloc(m, 1);
 }
 
 void
