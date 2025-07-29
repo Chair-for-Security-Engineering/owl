@@ -41,5 +41,5 @@ If building HEXL fails, either run `./build.sh clean` or remove `build/hexl` bef
 
 ## benchmarks
 
-Running the HEXL benchmark `build/bench_hexl` prints the benchmarking results.
-It also creates a `build/bench_hexl.dat`; `build/latex` converts this data file to LaTeX.
+Running the benchmark `build/bench_hexl` prints the timings for the HEXL ring implementation.
+It also dumps the results to `build/bench_hexl.dat`; use `build/latex` to convert these to LaTeX.
