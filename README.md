@@ -1,9 +1,9 @@
 # owl
 
-BGV key switching [[2023/1642](https://eprint.iacr.org/2023/1642)].
+BGV key switching [[2023/1642](https://eprint.iacr.org/2023/1642)]
 
 
-## core
+## files
 
 - `build.sh`: build script
 - `ring.h`: polynomial ring interface
