@@ -60,7 +60,7 @@ printq1(FILE *f, f64 *times, u32 *idx0)
 		Params *p = params_folded + pidx;
 		f64 *t = times + LEN_SINGLE + pidx;
 
-		u64 L = p[0].L;
+		u32 L = (u32)p[0].L;
 		f64 logQ = 0.0;
 		for (u32 i = 0; i < L; ++i)
 			logQ += log2((f64)p[0].mods[i]);
@@ -88,12 +88,12 @@ printq2(FILE *f, f64 *times, u32 *idx0)
 		Params *p = params_folded + pidx;
 		f64 *t = times + LEN_SINGLE + pidx;
 
-		u64 L0 = p[0].L;
+		u32 L0 = (u32)p[0].L;
 		int W0 = (int)p[0].W;
 		f64 logQ0 = 0.0;
 		for (u32 i = 0; i < L0; ++i)
 			logQ0 += log2((f64)p[0].mods[i]);
-		u64 L2 = p[2].L;
+		u32 L2 = (u32)p[2].L;
 		int W2 = (int)p[2].W;
 		f64 logQ2 = 0.0;
 		for (u32 i = 0; i < L2; ++i)
@@ -130,7 +130,7 @@ printq3(FILE *f, f64 *times, u32 *idx0)
 		Params *p = params_folded + pidx;
 		f64 *tfld = times + LEN_SINGLE + pidx;
 		f64 *tdbl = times + tidx;
-		u64 L = p[0].L;
+		u32 L = (u32)p[0].L;
 
 		#define Q3_SCOPE                                                   \
 		"    \\begin{scope}[shift={(%.2f, %.2f)}, xscale=.02, yscale=2]\n" \
@@ -198,7 +198,7 @@ printq3(FILE *f, f64 *times, u32 *idx0)
 		f64 *tfld = times + LEN_SINGLE + *idx0 + pidx;
 		f64 *tdbl = times + LEN_SINGLE + LEN_FOLDED + pidx;
 
-		u64 L = pfld[0].L;
+		u32 L = (u32)pfld[0].L;
 		for (u32 i = 0; i < L; ++i) {
 			#define Q3_FMT "%s & %2d & %2d & %2d & %2d & %2d & %6.1f \\\\\n"
 			fprintf(f, Q3_FMT, "single", logN, (int)(L - i), 1, (int)(L - i), 0, tfld[i] * 1000.0);
@@ -223,16 +223,14 @@ printq4(FILE *f, f64 *times, u32 *idx0)
 	      "\\midrule\\endfirsthead\n"
 	      "\\cmidrule(lr{1pt}){1-4}\\cmidrule(lr{1pt}){5-7} $\\log_2 N$ & \\multicolumn{1}{c}{$\\ell_{36}$} & \\multicolumn{1}{c}{$\\ell_{54}$} & $\\omega$ & \\texttt{small} & \\texttt{large} & Speedup \\\\\n"
 	      "\\midrule\\endhead\n", f);
-	f64 avg = 0.0, abs0[LEN_LOGN], absL[LEN_LOGN];
+	f64 avg = 0.0, absL[LEN_LOGN];
 	for (u32 idx = 0; idx < LEN_LOGN; ++idx) {
 		int logN = (int)params_logsN[idx];
 		Params *p = params_folded + pidx;
 		f64 *t = times + LEN_SINGLE + pidx;
 
-		u64 L = p[1].L;
+		u32 L = (u32)p[1].L;
 		for (u32 i = 0; i < L / 2; ++i) {
-			// if (p[1].N == 1U << 17 && i == 0)
-			//	continue;
 			int L36 = (int)p[2 * i].L;
 			int L54 = (int)p[2 * i + 1].L;
 			int W = (int)p[2 * i + 1].W;
@@ -242,8 +240,6 @@ printq4(FILE *f, f64 *times, u32 *idx0)
 			avg += t0 / t1, ++cnt;
 			if (i == 0)
 				absL[idx] = t1 - t0;
-			if (i == L / 2 - 1)
-				abs0[idx] = t1 - t0;
 		}
 		pidx += L;
 	}
@@ -264,7 +260,7 @@ printq5(FILE *f, f64 *times, u32 *idx0)
 		f64 *tfld = times + LEN_SINGLE + pidx;
 		f64 *tsw = times + tidx;
 
-		u64 L = p[1].L;
+		u32 L = (u32)p[1].L;
 		f64 diff[L / 2];
 		for (u32 i = 0; i < L / 2; ++i)
 			diff[i] = (tsw[i] - tfld[2 * i + 1]) * 1000.0;
@@ -288,7 +284,7 @@ printq5(FILE *f, f64 *times, u32 *idx0)
 		f64 *tfld = times + LEN_SINGLE + pidx;
 		f64 *tsw = times + tidx;
 
-		u64 L = p[1].L;
+		u32 L = (u32)p[1].L;
 		for (u32 i = 0; i < L / 2; ++i) {
 			int W = (int)p[2 * i + 1].W;
 			f64 t0 = tfld[2 * i + 1] * 1000.0, t1 = tsw[i] * 1000.0;
@@ -358,7 +354,7 @@ main(int argc, char **argv)
 	FILE *fdat = fopen(argv[1], "r");
 	if (fdat == 0)
 		perror("fopen"), exit(1);
-	fread(times, sizeof *times, LEN_PARAMS, fdat);
+	assert(fread(times, sizeof *times, LEN_PARAMS, fdat) == LEN_PARAMS);
 	fclose(fdat);
 
 	u32 idx = 0;

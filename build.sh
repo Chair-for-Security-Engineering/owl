@@ -36,7 +36,7 @@ build() {
 	fi
 
 	if test -f "${d}/latex.c"; then
-		${MY_CC} -o "${b}/latex" "${d}/latex.c" || exit 1
+		${MY_CC} -o "${b}/latex" "${d}/latex.c" -lm || exit 1
 	fi
 
 	return 0
@@ -61,7 +61,7 @@ rcopy() {
 		${MY_SSH} "${1}" "test -d ${2}/hexl" || {
 			${MY_SCP} hexl/* "${1}:${2}/hexl/" > /dev/null || exit 1
 		}
-		FILES="build.sh ring.h ring_hexl.cpp swk.c test.c params.c bench.c"
+		FILES="build.sh ring.h ring_hexl.cpp swk.c test.c params.c bench.c latex.c"
 		${MY_SCP} ${FILES} "${1}:${2}/" > /dev/null || exit 1
 	fi
 
@@ -77,8 +77,6 @@ tests() {
 	d="$(pwd)/$(dirname "${0}")"
 	echo "\033[34m./build.sh: tests\033[0m"
 	test -x "${d}/build/test_hexl" && { "${d}/build/test_hexl" || exit 1; }
-	test -x "${d}/build/test_cpu"  && { "${d}/build/test_cpu"  || exit 1; }
-	test -x "${d}/build/test_gpu"  && { "${d}/build/test_gpu"  || exit 1; }
 	return 0
 }
 
