@@ -24,6 +24,8 @@ BGV key switching [[2023/1642](https://eprint.iacr.org/2023/1642)]
 - CMake for building HEXL
 - ssh/scp for remote building/testing
 
+Make sure you initialize the submodule: `git submodule update --init --recursive`.
+
 
 ## build & test
 

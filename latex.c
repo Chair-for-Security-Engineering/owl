@@ -17,6 +17,18 @@ typedef double   f64;
 #define LEN_SWITCH LEN(params_switch)
 #define LEN_PARAMS (LEN_SINGLE + LEN_FOLDED + LEN_DOUBLE + LEN_SWITCH)
 
+#define LTXHEAD                                                                              \
+"\\documentclass{article}\n\n"                                                               \
+"\\usepackage{booktabs}\n"                                                                   \
+"\\usepackage{longtable}\n"                                                                  \
+"\\usepackage{tikz}\n"                                                                       \
+"\\tikzset{dot/.style={fill, circle, inner sep=0pt, minimum size=#1cm}}\n\n"                 \
+"\\begin{document}\n"                                                                        \
+"\\newtoks\\owlevalcap\n\n"                                                                  \
+"\\title{A New Perspective on Key Switching for BGV-like Schemes: Supplementary Material}\n" \
+"\\author{Johannes Mono \\and Tim Güneysu}\n"                                                \
+"\\maketitle\n\n"
+
 #define TABLE(lbl, cfg)                           \
 "\\begin{table}\n"                                \
 "    \\centering\\setlength{\\tabcolsep}{.5em}\n" \
@@ -245,8 +257,8 @@ printq4(FILE *f, f64 *times, u32 *idx0)
 	}
 	fputs(TLONG_END, f);
 	for (u32 idx = 0; idx < LEN_LOGN; ++idx)
-		fprintf(f, "[+] absolute: %lf\n", absL[idx]);
-	fprintf(f, "[+] average:  %lf\n\n", avg / (f64)cnt);
+		fprintf(f, "%% [+] absolute: %lf\n", absL[idx]);
+	fprintf(f, "%% [+] average:  %lf\n\n", avg / (f64)cnt);
 }
 
 void
@@ -265,7 +277,7 @@ printq5(FILE *f, f64 *times, u32 *idx0)
 		for (u32 i = 0; i < L / 2; ++i)
 			diff[i] = (tsw[i] - tfld[2 * i + 1]) * 1000.0;
 		qsort(diff, L / 2, 8, cmp);
-		fprintf(f, "[+] overhead 2^%2d: %lf\n", logN, diff[L / 4]);
+		fprintf(f, "%% [+] overhead 2^%2d: %lf\n", logN, diff[L / 4]);
 		pidx += L, tidx += L / 2;
 	}
 
@@ -358,12 +370,14 @@ main(int argc, char **argv)
 	fclose(fdat);
 
 	u32 idx = 0;
+	fputs(LTXHEAD, stdout);
 	printq1(stdout, times, &idx);
 	printq2(stdout, times, &idx);
 	printq3(stdout, times, &idx);
 	printq4(stdout, times, &idx);
 	printq5(stdout, times, &idx);
 	printq6(stdout, times, &idx);
+	fputs("\\end{document}\n\n", stdout);
 
 	return 0;
 }
